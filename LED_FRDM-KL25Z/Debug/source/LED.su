@@ -1,0 +1,7 @@
+../source/LED.c:76:6:delayMs	24	static
+../source/LED.c:89:5:main	8	static
+../source/LED.c:117:6:toggleColors	8	static
+../source/LED.c:133:6:colorRedBlue	8	static
+../source/LED.c:144:6:colorBlueGreen	8	static
+../source/LED.c:154:6:colorRedGreen	8	static
+../source/LED.c:164:6:colorRGB	8	static
