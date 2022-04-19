@@ -74,22 +74,29 @@ typedef struct {
  */
 int main(void) {
 
+	//Ativando o clock na PORTA e PORTE
 	SIM->SCGC5 |= (1 << 9) | (1 << 13);
 
-	//LEDs
+	//LEDs - Habilitando MUX-GPIO
 	PORT_E->PCR[1] |= (1 << 8);
 	PORT_E->PCR[29] |= (1 << 8);
 
-	//SWs
+	//SWs - Habilitando MUX-GPIO e os pull
 	PORT_A->PCR[12] |= (1 << 8) | (1 << 1) | (1 << 0);
 	PORT_A->PCR[5] |= (1 << 8) | (1 << 1) | (1 << 0);
 
-	GPIO_E->PDDR |= (1 << 1);
-	GPIO_E->PDDR |= (1 << 29);
+	GPIO_E->PDDR |= (1 << 1); //Direcionando como saída
+	GPIO_E->PDDR |= (1 << 29); //Direcionando como saída
 	GPIO_E->PSOR |= (1 << 1);
 	GPIO_E->PSOR |= (1 << 29);
 
+
+	/**
+	 * SW1 - PTA12; LED1 - PTE1
+	 * SW2 - PTA5; LED2 - PTE29
+	 */
 	while(1){
+		//Verificando se o botão foi pressionado
 		if(GPIO_A->PDIR & (1 << 12)){
 			// LED OFF
 			GPIO_E->PSOR |= (1 << 1);
@@ -98,7 +105,7 @@ int main(void) {
 			GPIO_E->PCOR |= (1 << 1);
 		}
 
-		//DEU CRT
+		//Verificando se o botão foi pressionado
 		if(GPIO_A->PDIR & (1 << 5)){
 			// LED OFF
 			GPIO_E->PSOR |= (1 << 29);
