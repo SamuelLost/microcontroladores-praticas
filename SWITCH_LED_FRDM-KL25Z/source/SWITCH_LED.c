@@ -1,5 +1,5 @@
 /**
- * @file    Switch_LED.c
+ * @file    SWITCH_LED.c
  * @brief   Application entry point.
  */
 #include <stdio.h>
@@ -32,25 +32,26 @@ typedef struct{
 #define GPIO_D ((GPIORegs_t *) 0x400FF0C0)
 /*
  * @brief   Application entry point.
+ * Circuito com filtro passa-baixa com o objetivo de eliminar o bounce do botão
  */
 int main(void) {
-		SIM->SCGC5 = (1 << 11) | (1 << 12);
+		SIM->SCGC5 = (1 << 11) | (1 << 12); //Ativando clock das portas C e D
 
-		PORT_C->PCR[8] = (1 << 8); //porta c, pino 8
+		PORT_C->PCR[8] = (1 << 8); //MUX -> PORT_C, PIN 8
 
-		PORT_D->PCR[4] = (1 << 8) | (1 << 1) | (1 << 0); //porta d pino 4
+		PORT_D->PCR[4] = (1 << 8) | (1 << 1) | (1 << 0); //MUX -> PORT_D, PIN 4, PULLENABLE, PULLUP
 
-		GPIO_C->PDDR = (1 << 8);
+		GPIO_C->PDDR = (1 << 8); //GPIO is OUTPUT
 
-		GPIO_C->PSOR = (1 << 8);
+		GPIO_C->PSOR = (1 << 8); // LED OFF
 
 		while(1){
-			if(GPIO_D->PDIR & (1 << 4)){
+			if(GPIO_D->PDIR & (1 << 4)){ //POOLING
 				// LED OFF
-				GPIO_C->PSOR = (1 << 8);
+				GPIO_C->PSOR |= (1 << 8);
 			}else{
 				//LED ON
-				GPIO_C->PCOR = (1 << 8);
+				GPIO_C->PCOR |= (1 << 8);
 			}
 		}
     return 0 ;
