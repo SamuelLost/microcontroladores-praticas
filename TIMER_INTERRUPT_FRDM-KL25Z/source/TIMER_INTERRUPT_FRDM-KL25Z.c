@@ -43,30 +43,39 @@
 
 /* TODO: insert other definitions and declarations here. */
 
+typedef struct {
+	uint32_t PCR[32];
+}PORTRegs_t;
+
+#define PORT_B ((PORTRegs_t *) 0x4004A000)
+
+typedef struct {
+	uint32_t PDOR;
+	uint32_t PSOR;
+	uint32_t PCOR;
+	uint32_t PTOR;
+	uint32_t PDIR;
+	uint32_t PDDR;
+}GPIORegs_t;
+
+#define GPIO_B ((GPIORegs_t *) 0x400FF040)
+
+typedef struct {
+	uint32_t ISER[1];
+	uint32_t RSVD[31];
+	uint32_t ICER[1];
+	uint32_t RSVD1[31];
+	uint32_t ISPR[1];
+	uint32_t RSVD2[31];
+	uint32_t ICPR[1];
+	uint32_t RSVD3[31];
+	uint32_t RSVD4[64];
+	uint32_t IPR[8];
+};
 /*
  * @brief   Application entry point.
  */
 int main(void) {
 
-    /* Init board hardware. */
-    BOARD_InitBootPins();
-    BOARD_InitBootClocks();
-    BOARD_InitBootPeripherals();
-#ifndef BOARD_INIT_DEBUG_CONSOLE_PERIPHERAL
-    /* Init FSL debug console. */
-    BOARD_InitDebugConsole();
-#endif
-
-    PRINTF("Hello World\n");
-
-    /* Force the counter to be placed into memory. */
-    volatile static int i = 0 ;
-    /* Enter an infinite loop, just incrementing a counter. */
-    while(1) {
-        i++ ;
-        /* 'Dummy' NOP to allow source level single stepping of
-            tight while() loop */
-        __asm volatile ("nop");
-    }
     return 0 ;
 }
