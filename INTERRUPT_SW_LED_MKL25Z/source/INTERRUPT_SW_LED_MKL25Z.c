@@ -18,9 +18,10 @@ typedef struct {
 	uint32_t PCR[32];
 }PORTRegs_t;
 
-#define PORT_B ((PORTRegs_t *)0x4004A000)
-#define PORT_C ((PORTRegs_t *)0x4004B000)
-#define PORT_D ((PORTRegs_t *)0x4004C000)
+#define PORT_A ((PORTRegs_t *) 0x40049000)
+#define PORT_B ((PORTRegs_t *) 0x4004A000)
+#define PORT_C ((PORTRegs_t *) 0x4004B000)
+#define PORT_D ((PORTRegs_t *) 0x4004C000)
 
 typedef struct {
 	uint32_t PDOR;
@@ -31,9 +32,10 @@ typedef struct {
 	uint32_t PDDR;
 }GPIORegs_t;
 
-#define GPIO_B ((GPIORegs_t *)0x400FF040)
-#define GPIO_C ((GPIORegs_t *)0x400FF080)
-#define GPIO_D ((GPIORegs_t *)0x400FF0C0)
+#define GPIO_A ((GPIORegs_t *) 0x400FF000)
+#define GPIO_B ((GPIORegs_t *) 0x400FF040)
+#define GPIO_C ((GPIORegs_t *) 0x400FF080)
+#define GPIO_D ((GPIORegs_t *) 0x400FF0C0)
 
 typedef struct {
 	uint32_t iser[1];
@@ -50,8 +52,7 @@ typedef struct {
 
 #define NVIC_REG ((NVIC_Regs_t *)0xE000E100)
 
-void PORTD_IRQHandler(void)
-{
+void PORTD_IRQHandler(void) {
 	if(GPIO_D->PDIR & (1<<4)) {
 		// Fazer o LED -> OFF
 		GPIO_C->PSOR = (1 << 8);
@@ -64,27 +65,40 @@ void PORTD_IRQHandler(void)
 	PORT_D->PCR[4] = PORT_D->PCR[4] | (1 << 24);
 }
 
+void PORTA_IRQHandler(void) {
+	if(GPIO_A->PDIR & (1 << 12)) {
+		GPIO_C->PSOR = (1 << 9);
+	} else {
+		GPIO_C->PCOR = (1 << 9);
+	}
+
+	PORT_A->PCR[4] |= (1 << 24);
+}
 /*
  * @brief   Application entry point.
  */
 int main(void) {
+
 	// Ativando o clock da PORTA_C e PORTA_D
-	SIM->SCGC5 = (1 << 11) | (1 << 12);
+	SIM->SCGC5 = (1 << 11) | (1 << 12) | (1 << 9);
 
 	// Configurando o LED PORTA_C_8 como GPIO
 	PORT_C->PCR[8] = (1 << 8);
-
+	PORT_C->PCR[9] = (1 << 9);
 	// Configurando Switch PORTDA_A_4 para SW GPIO / Pull Enable / Pull UP
 	PORT_D->PCR[4] = (1 << 8) | (1 << 1) | (1 << 0) | (0xb << 16);
+	PORT_A->PCR[12] = (1 << 8) | (1 << 1) | (1 << 0) | (0xb << 16);
 
 	// Configurando LED PORTA_C_8 como saída
 	GPIO_C->PDDR = (1 << 8);
-
+	GPIO_C->PDDR = (1 << 9);
 	// Fazer o LED -> OFF
 	GPIO_C->PSOR = (1 << 8);
-
+	GPIO_C->PSOR = (1 << 9);
 	// Ativar a Interrupção para PORTA_D
-	NVIC_REG->iser[0] = (1 << 31);
+	NVIC_REG->iser[0] |= (1 << 31) | (1 << 30);
+	NVIC_EnableIRQ(PORTA_IRQn);
+	NVIC_EnableIRQ(PORTD_IRQn);
 
 	while(1) {
 	}
