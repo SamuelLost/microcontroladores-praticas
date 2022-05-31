@@ -72,7 +72,7 @@ void PORTA_IRQHandler(void) {
 		GPIO_C->PCOR = (1 << 9);
 	}
 
-	PORT_A->PCR[4] |= (1 << 24);
+	PORT_A->PCR[12] |= (1 << 24);
 }
 /*
  * @brief   Application entry point.
@@ -97,8 +97,8 @@ int main(void) {
 	GPIO_C->PSOR = (1 << 9);
 	// Ativar a Interrupção para PORTA_D
 	NVIC_REG->iser[0] |= (1 << 31) | (1 << 30);
-	NVIC_EnableIRQ(PORTA_IRQn);
-	NVIC_EnableIRQ(PORTD_IRQn);
+//	NVIC_EnableIRQ(PORTA_IRQn);
+//	NVIC_EnableIRQ(PORTD_IRQn);
 
 	while(1) {
 	}
