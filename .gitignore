@@ -2,3 +2,4 @@
 AzureRTOS_TAD_logs/
 FreeRTOS_TAD_logs/
 .mcuxpressoide_packages_support/MKL46Z256xxx4_support/
+.mcuxpressoide_packages_support/
