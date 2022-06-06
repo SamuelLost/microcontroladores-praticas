@@ -87,7 +87,7 @@ int main(void) {
 
 	SIM->SCGC6 |= (1 << 23);
 	PIT_REG->MCR = 0;
-	PIT_CH_REG->LDVAL = GET_SEC_COUNT(1);
+	PIT_CH_REG->LDVAL = GET_SEC_COUNT(8);
 
 	PIT_CH_REG->TCTRL = (1 << 1) | (1 << 0);
 
