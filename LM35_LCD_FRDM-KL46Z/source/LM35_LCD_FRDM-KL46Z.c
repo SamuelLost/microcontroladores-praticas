@@ -15,78 +15,139 @@
 #include <stdio.h>
 #include "fsl_clock.h"
 
+typedef enum lcd_RS_tag
+{
+	COMANDO,
+	DADO
+} lcd_RS_type;
+
+/* Delay n milliseconds
+ * The CPU core clock is set to MCGFLLCLK at 41.94 MHz in SystemInit().
+ */
+void delay(uint16_t cnt)
+{ // uint16_t cnt){ //  em mili segundos
+	int i, j;
+	// 1 instrução é em torno de 1/48000000 = 20ns para ser executada com clock de 48Mhz
+	for (j = 0; j < 50; j++)
+	{
+		for (i = 0; i < cnt; i++)
+			;
+	}
+}
+
+/******************
+Constants
+*****************/
+/* Canal ADC do sensor de temperatura (ADC0_8) */
+/* Nota: O canal AD8 é mapeado para o pino PTB0. Por
+ * padrão, este pino é configurado como analógico. o
+ * clock para PORTB foi habilitado em lcd_init()
+ */
+#define TEMPERATURE_SENSOR_CHN (9)
+
+/* Escrevendo 0x1F (31) no registrador ADCH, desabilita o ADC */
+#define DISABLE_ADC (31)
+
+/* Tensão ADC Vref (3,0v) na multiplicação de 100º
+	(Consulte a descrição do arquivo acima para este valor)
+*/
+#define VREF_FACTOR (300)
+
 void ADC0_init(void);
 void delayMs(int n);
 
 /* Delay n milliseconds
  * The CPU core clock is set to MCGFLLCLK at 41.94 MHz in SystemInit().
  */
-void LCD_init(void) {
+void GPIO_initLCD(void)
+{
 	SIM->SCGC5 |= (1 << 13);
 
 	PORTE->PCR[2] |= (1 << 8);	// D0
-	PORTE->PCR[3] |= (1 << 8);  // D1
-	PORTE->PCR[6] |= (1 << 8);  // D2
+	PORTE->PCR[3] |= (1 << 8);	// D1
+	PORTE->PCR[6] |= (1 << 8);	// D2
 	PORTE->PCR[16] |= (1 << 8); // D3
 	PORTE->PCR[17] |= (1 << 8); // D4
 	PORTE->PCR[18] |= (1 << 8); // D5
 	PORTE->PCR[19] |= (1 << 8); // D6
 	PORTE->PCR[31] |= (1 << 8); // D7
 
-
 	// PINOS DE CONTROLE
 	PORTE->PCR[20] |= (1 << 8); // RS
-	PORTE->PCR[21] |= (1 << 8); // R/W
-	PORTE->PCR[22] |= (1 << 8); // E
+	PORTE->PCR[21] |= (1 << 8); // E
 
+	GPIOE->PDDR |= (1 << 2) | (1 << 3) | (1 << 6) | (1 << 16) | (1 << 17) | (1 << 18) | (1 << 19) | (1 << 20) | (1 << 21) | (1 << 31);
 
-	GPIOE->PDDR |= (1 << 2) | (1 << 3) | (1 << 6) | (1 << 16) | (1 << 17) | (1 << 18) | (1 << 19) | (1 << 20) | (1 << 21) | (1 << 22) | (1 << 31);
-
-	GPIOE->PDOR |= (1 << 2) | (1 << 3) | (1 << 6) | (1 << 16) | (1 << 17) | (1 << 18) | (1 << 19) | (1 << 20) | (1 << 21) | (1 << 22) | (1 << 31);
+	GPIOE->PDOR |= (1 << 2) | (1 << 3) | (1 << 6) | (1 << 16) | (1 << 17) | (1 << 18) | (1 << 19) | (1 << 20) | (1 << 21) | (1 << 31);
 }
 
-void GPIO_setByte(char c){
-	//colocar os dados nos pinos de dados D0-D7
-	GPIOE->PDOR &= 0xFFFFFF00;			// zerar os bytes menos significativos
-	GPIOE->PDOR |= (unsigned int) c;	// setar os bits em 1 no byte menos significativo
+void GPIO_setByte(char c)
+{
+	// colocar os dados nos pinos de dados D0-D7
+	GPIOE->PDOR &= 0x00000000;		// zerar os bytes menos significativos
+	GPIOE->PDOR |= (unsigned int)c; // setar os bits em 1 no byte menos significativo
+	int shift = ((unsigned int)c) & (0x1);
+	GPIOE->PDOR |= (shift << 2);
+	shift = ((unsigned int)c >> 1) & (0x1);
+	GPIOE->PDOR |= (shift << 3);
+	shift = ((unsigned int)c >> 2) & (0x1);
+	GPIOE->PDOR |= (shift << 6);
+	shift = ((unsigned int)c >> 3) & (0x1);
+	GPIOE->PDOR |= (shift << 16);
+	shift = ((unsigned int)c >> 4) & (0x1);
+	GPIOE->PDOR |= (shift << 17);
+	shift = ((unsigned int)c >> 5) & (0x1);
+	GPIOE->PDOR |= (shift << 18);
+	shift = ((unsigned int)c >> 6) & (0x1);
+	GPIOE->PDOR |= (shift << 19);
+	shift = ((unsigned int)c >> 7) & (0x1);
+	GPIOE->PDOR |= (shift << 31);
 }
 
-//Gerar o pulso de Enable de ~450ns
-void GPIO_enableE(){
-	//gerar um pulso de ~450ns
-	GPIOC->PSOR = (1 << 22); // setar em 1
+// Gerar o pulso de Enable de ~450ns
+void GPIO_enableE()
+{
+	// gerar um pulso de ~450ns
+	GPIOE->PSOR = (1 << 21); // setar em 1
 	delay(1);
-	GPIOC->PCOR = (1 << 22); // setar em 1
+	GPIOE->PCOR = (1 << 21); // setar em 1
 }
 
-void GPIO_setRS(lcd_RS_type i){
-	if(i == COMANDO){
-		GPIOC->PCOR = (1 << 20);		// Seta o LCD no Modo de COMANDO
-	}else if(i = DADO){
-		GPIOC->PSOR = (1 << 20);		// Seta o LCD no Modo de DADOS
+void GPIO_setRS(lcd_RS_type i)
+{
+	if (i == COMANDO)
+	{
+		GPIOE->PCOR = (1 << 20); // Seta o LCD no Modo de COMANDO
+	}
+	else if (i == DADO)
+	{
+		GPIOE->PSOR = (1 << 20); // Seta o LCD no Modo de DADOS
 	}
 }
 
 // Transferir um byte ao LCD
-void  escreveLCD(char c, uint32_t t){
-	GPIO_setByte(c);			// c byes
+void escreveLCD(char c, uint32_t t)
+{
+	GPIO_setByte(c); // c byes
 	GPIO_enableE();
-	delay(t);					// t tempo de processamento em multiplos de 2 us
+	delay(t); // t tempo de processamento em multiplos de 2 us
 }
 
 // Inicializar o LCD
-void initLCD(){
-	//esperar por mais de 30ns = 30000us/2 = 15000
+void initLCD()
+{
+	// esperar por mais de 30ns = 30000us/2 = 15000
 	delay(15000);
 
 	GPIO_setRS(COMANDO);
-	escreveLCD(0x38, 20);		// Function Set: 39us/2 --> 20
-	escreveLCD(0x0C, 20);		// Display ON/OFF Control: 39us/2 --> 20
-	escreveLCD(0x01, 765);		// Display Clear: 1530us/2 --> 765
-	escreveLCD(0x06, 20);		// Entry mode set: 39us/2 --> 20
+	escreveLCD(0x38, 20);  // Function Set: 39us/2 --> 20
+	escreveLCD(0x0C, 20);  // Display ON/OFF Control: 39us/2 --> 20
+	escreveLCD(0x01, 765); // Display Clear: 1530us/2 --> 765
+	escreveLCD(0x06, 20);  // Entry mode set: 39us/2 --> 20
 }
 
-void scan_temperature(void){
+void scan_temperature(void)
+{
 	static uint16_t adc_result;
 	static uint16_t adc_result_avg;
 	static uint16_t temp;
@@ -98,21 +159,23 @@ void scan_temperature(void){
 	/* Incrementa a cada 50 ms */
 	loopcntr++;
 
-	ADC0->SC1[0] = ( (TEMPERATURE_SENSOR_CHN & (8 << 0)) | (ADC0->SC1[0] & ((1 << 6) | (1 << 5)  )
-					) );
+	ADC0->SC1[0] = ((TEMPERATURE_SENSOR_CHN & (9 << 0)) | (ADC0->SC1[0] & ((1 << 6) | (1 << 5))));
 
-	while(ADC0->SC2 & (1 << 7)); 	 // Conversion in progress
-	while(!(ADC0->SC1[0] & (1 << 7) )); // Run until the conversion is complete
-	//while((ADC0->SC1[0] & (1 << 7)) == 0); // add
+	while (ADC0->SC2 & (1 << 7))
+		; // Conversion in progress
+	while (!(ADC0->SC1[0] & (1 << 7)))
+		; // Run until the conversion is complete
+	// while((ADC0->SC1[0] & (1 << 7)) == 0); // add
 
 	/* Obtém o resultado do ADC para o sensor de temperatura */
-	adc_result  = adc_result + ADC0->R[0];
+	adc_result = adc_result + ADC0->R[0];
 
-	//data = ADC0->R[0];//ADD
+	// data = ADC0->R[0];//ADD
 
 	/* Pegue 16 amostras para calcular a temperatura */
-	if (loopcntr >= 16){
-		adc_result_avg = adc_result >> 4;       /* obtendo o valor médio do ADC*/
+	if (loopcntr >= 16)
+	{
+		adc_result_avg = adc_result >> 4;			   /* obtendo o valor médio do ADC*/
 		temp = ((adc_result_avg * VREF_FACTOR) >> 10); /* Calcular a temperatura */
 
 		adc_result = 0;
@@ -127,68 +190,100 @@ void scan_temperature(void){
 // Escrever uma mensagem str no LCD a partir do endereço especificado
 // end endereço da DDRAM
 // str mensagem
-void escreveMensagem(uint8_t end, char* str){
-	//Possicione o curso no end
-	uint8_t tmp = 0b10000000 | end;		// seta o bit 7 em 1
-	GPIO_setRS(COMANDO);				// Comando
-	escreveLCD(tmp, 20);				// seta o endereço do cursor
+void escreveMensagem(uint8_t end, char *str)
+{
+	// Possicione o curso no end
+	uint8_t tmp = 0b10000000 | end; // seta o bit 7 em 1
+	GPIO_setRS(COMANDO);			// Comando
+	escreveLCD(tmp, 20);			// seta o endereço do cursor
 
 	// Chaveia para o modo de DADO
 	GPIO_setRS(DADO);
-	while(*str){
+	while (*str)
+	{
 		escreveLCD(*str, 20);
 		str++;
 	}
 }
 
-void display_temperature(uint8_t temp){
+void display_temperature(uint8_t temp)
+{
 	static char lcd_str[] = "00 (C)"; /* temperature */
-	static uint8_t prev_temp = 0;     /* Previous temperature */
+	static uint8_t prev_temp = 0;	  /* Previous temperature */
 
-	if (prev_temp != temp){
+	if (prev_temp != temp)
+	{
 		prev_temp = temp;
 
 		/* Move cursor para 6th bloco na linha 2 */
-		//escreveLCD(0x46, 20);
+		// escreveLCD(0x46, 20);
 		lcd_str[0] = ((uint8_t)(temp / 10)) + '0'; /* Higher digit in ASCII */
 		lcd_str[1] = ((uint8_t)(temp % 10)) + '0'; /* Lower digit in ASCII */
-		escreveMensagem(0x46, lcd_str); /* Write to LCD */
+		escreveMensagem(0x46, lcd_str);			   /* Write to LCD */
 	}
 }
 
-int main (void) {
-	int result;
-	ADC0_init(); /* Configure ADC0 */
-	while (1) {
-		ADC0->SC1[0] = 9; /* start conversion on channel 0 */
-		while(!(ADC0->SC1[0] & 0x80)) { } /* wait for COCO */
-		result = ADC0->R[0]; /* read conversion result and clear COCO flag */
-		//		temperature = result * 330.0 / 65536; /* convert voltage to temperature */
-		//		printf("\r\nTemp = %6.2dC", temperature); /* convert to string */
+int main(void){
+//	int result;
+//	ADC0_init(); /* Configure ADC0 */
+//	while (1)
+//	{
+//		ADC0->SC1[0] = 9; /* start conversion on channel 0 */
+//		while (!(ADC0->SC1[0] & 0x80))
+//		{
+//		}					 /* wait for COCO */
+//		result = ADC0->R[0]; /* read conversion result and clear COCO flag */
+//		//		temperature = result * 330.0 / 65536; /* convert voltage to temperature */
+//		//		printf("\r\nTemp = %6.2dC", temperature); /* convert to string */
+//
+//		float temperature = result * 330.0 / 65536;
+//
+//		printf("Temperatura %d C\n", (int)temperature);
+//		escreveMensagem(0x05, "Samuel");
+//	}
 
-		float temperature = result * 330.0 / 65536;
+	char str1[] = "Werlley";
 
-		printf("Temperatura %d C\n", (int) temperature);
+	// Init ADC
+//	init_ADC();
+	ADC0_init();
+
+	GPIO_initLCD();
+	/* Iniciar LCD pela inicialização através dos comandos*/
+	initLCD();
+
+	escreveMensagem(0x05, str1);
+	scan_temperature();
+	char msg[] = "Temperatura";
+	while(1){
+		escreveMensagem(0x05, msg); /* Write to LCD */
+		/* Scan Temperatura a cada 50ms */
+		scan_temperature();
+
+		//escreveMensagem(0x40, lista_cores[i]);
+		delay(5000);
 	}
 }
 void ADC0_init(void)
 {
 	SIM->SCGC5 |= (1 << 10); /* clock to PORTE */
-	PORTB->PCR[1] = 0; /* PTB1 analog input */
+	PORTB->PCR[1] = 0;		 /* PTB1 analog input */
 
-
-	SIM->SCGC5 |= 0x2000; /* clock to PORTE */
-	PORTE->PCR[20] = 0; /* PTE20 analog input */
+	SIM->SCGC5 |= 0x2000;	 /* clock to PORTE */
+	PORTE->PCR[20] = 0;		 /* PTE20 analog input */
 	SIM->SCGC6 |= 0x8000000; /* clock to ADC0 */
-	ADC0->SC2 &= ~0x40; /* software trigger */
-	ADC0->SC3 |= 0x07; /* 32 samples average */
+	ADC0->SC2 &= ~0x40;		 /* software trigger */
+	ADC0->SC3 |= 0x07;		 /* 32 samples average */
 	/* clock div by 4, long sample time, single ended 16 bit, bus clock */
 	ADC0->CFG1 = 0x40 | 0x10 | 0x0C | 0x00;
 }
 
-void delayMs(int n) {
+void delayMs(int n)
+{
 	int i;
 	int j;
-	for(i = 0 ; i < n; i++)
-		for (j = 0; j < 7000; j++) {}
+	for (i = 0; i < n; i++)
+		for (j = 0; j < 7000; j++)
+		{
+		}
 }

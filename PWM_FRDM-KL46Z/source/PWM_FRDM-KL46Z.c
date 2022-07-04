@@ -40,6 +40,7 @@ typedef struct{
 
 #define PTE29_PIN 29 //TPM0_CH2
 #define PTE31_PIN 31 //TPM0_CH4
+#define PTB2_PIN 2 	//TPM2_CH0
 
 //#define FREQ_2_MOD(x) (375000/x)
 
@@ -51,20 +52,20 @@ void delay(){
 	for(int i = 0; i < 300000; i++){}
 }
 void InitTPMPWM(void){
-	SIM->SCGC5 = (1 << 13); // Ativar clock porta E
+	SIM->SCGC5 = (1 << 10); // Ativar clock porta E
 	/*
 	 * 	Pin Control Register n (PORTx_PCRn)
 	 *| 31  --  25|  24 | 23 -- 20 | 19 -- 16 | 15 -- 11 | 10  9  8 | 7 |  6  | 5 |  4  | 3 |  2  | 1  |  0 |
 	 *|     0	  | ISF |     0    |   IRQC   |     0    |    MUX   | 0 | DSE | 0 | PFE | 0 | SRE | PE | PS |      | 0 | LPTMR |
 	 *|           | w1c |		   |
 	 */
-	PORTE->PCR[PTE29_PIN] = 	(1 << 24) |		// ISF=PORTB_PCR18[24]: w1c (limpa a pendência)
-								(0b011 << 8);   // MUX=PORTB_PCR18[10:8]=0b011 (TPM2_CH0)
-	GPIOE->PDDR = (1 << 29);
+//	PORTB->PCR[PTB2_PIN] = 	(1 << 24) |		// ISF=PORTB_PCR18[24]: w1c (limpa a pendência)
+//								(0b011 << 8);   // MUX=PORTB_PCR18[10:8]=0b011 (TPM2_CH0)
+//	GPIOB->PDDR = (1 << 29);
 
-	PORTE->PCR[PTE31_PIN] = 	(1 << 24) |		// ISF=PORTB_PCR18[24]: w1c (limpa a pendência)
+	PORTB->PCR[PTB2_PIN] = 	(1 << 24) |		// ISF=PORTB_PCR18[24]: w1c (limpa a pendência)
 								(0b011 << 8);   // MUX=PORTB_PCR18[10:8]=0b011 (TPM2_CH0)
-	GPIOE->PDDR = (1 << 31);
+	GPIOB->PDDR = (1 << 2);
 //	PORT_A->PCR[PTA12_PIN] = 	(1 << 24) |		// ISF=PORTB_PCR18[24]: w1c (limpa a pendência)
 //								(0b011 << 8);   // MUX=PORTB_PCR18[10:8]=0b011 (TPM1_CH0)
 	/*
@@ -72,7 +73,7 @@ void InitTPMPWM(void){
 	 *|   31 | 30 |  29 | 28 |  27  |  26  |  25  |  24  |  23 | 22 -- 2 |    1   |  0  |
 	 *| DAC0 |  0 | RTC |  0 | ADC0 | TPM2 | TPM1 | TPM0 | PIT |    0    | DMAMUX | FTF |
 	 */
-	SIM->SCGC6 = (1 << 24); // Habilitando o clock do TPM0
+	SIM->SCGC6 = (1 << 26); // Habilitando o clock do TPM0
 
 	/*
 	 * 	System Options Register 2 (SIM_SOPT2)
@@ -95,7 +96,7 @@ void InitTPMPWM(void){
 //	TPM1_REG->mod = 3276;    		// MOD=TPM2_MOD[15:0]=3276
 //	TPM2_REG->mod = 3276;
 
-	TPM0_REG->mod = 3276;
+	TPM2_REG->mod = 819;
 
 	//valor do modulo = 48000000 / 128 = 375000 / 7500 = 50 Hz
 	//TPM1_REG->mod = 7500;    		// MOD=TPM2_MOD[15:0]=7500
@@ -109,7 +110,7 @@ void InitTPMPWM(void){
 
 //	TPM0_REG->sc = ~(1 << 5) | (0b01 << 3) | (0b111 << 0);
 
-	TPM0_REG->sc = 	(0 << 5)	|			// CPWMS=TPM2_SC[5]=0 (modo de contagem crescente)
+	TPM2_REG->sc = 	(0 << 5)	|			// CPWMS=TPM2_SC[5]=0 (modo de contagem crescente)
 					(0b01 << 3)	|           // CMOD=TPM2_SC[4:3]=0b01 (incrementa a cada pulso do LPTPM)
 					(0b111 << 0);
 
@@ -120,15 +121,15 @@ void InitTPMPWM(void){
 	/* Desativar o PWM no modulo TPM1 canal 0 --> PTA12 */
 //	TPM0_REG->CONTROLS[2].CnSC = ~(1 << 5) | ~(1 << 4) | ~(1 << 3) | ~(1 << 2);
 
-	TPM0_REG->CONTROLS[2].CnSC = (0 << 5) | // MSB =TPM2_C0SC[5]=0
+	TPM2_REG->CONTROLS[0].CnSC = (0 << 5) | // MSB =TPM2_C0SC[5]=0
 								 (0 << 4) | // MSA =TPM2_C0SC[4]=0
 								 (0 << 3) | // ELSB=TPM2_C0SC[3]=0
 								 (0 << 2);  // ELSA=TPM2_C0SC[2]=0
 
-	TPM0_REG->CONTROLS[4].CnSC = (0 << 5) | // MSB =TPM2_C0SC[5]=0
-								 (0 << 4) | // MSA =TPM2_C0SC[4]=0
-								 (0 << 3) | // ELSB=TPM2_C0SC[3]=0
-								 (0 << 2);  // ELSA=TPM2_C0SC[2]=0
+//	TPM0_REG->CONTROLS[4].CnSC = (0 << 5) | // MSB =TPM2_C0SC[5]=0
+//								 (0 << 4) | // MSA =TPM2_C0SC[4]=0
+//								 (0 << 3) | // ELSB=TPM2_C0SC[3]=0
+//								 (0 << 2);  // ELSA=TPM2_C0SC[2]=0
 
 //	TPM1_REG->CONTROLS[0].CnSC = (0 << 5) | // MSB =TPM2_C0SC[5]=0
 //								 (0 << 4) | // MSA =TPM2_C0SC[4]=0
@@ -137,15 +138,15 @@ void InitTPMPWM(void){
 
 //	TPM0_REG->CONTROLS[2].CnSC = (1 << 5) | ~(1 << 4) | (1 << 3) | ~(1 << 2);
 
-	TPM0_REG->CONTROLS[2].CnSC = (1 << 5) | // MSB =TPM2_C0SC[5]=0
+	TPM2_REG->CONTROLS[0].CnSC = (1 << 5) | // MSB =TPM2_C0SC[5]=0
 								 (0 << 4) | // MSA =TPM2_C0SC[4]=0
 								 (1 << 3) | // ELSB=TPM2_C0SC[3]=0
 								 (0 << 2);  // ELSA=TPM2_C0SC[2]=0
 
-	TPM0_REG->CONTROLS[4].CnSC = (1 << 5) | // MSB =TPM2_C0SC[5]=0
-								 (0 << 4) | // MSA =TPM2_C0SC[4]=0
-								 (1 << 3) | // ELSB=TPM2_C0SC[3]=0
-								 (0 << 2);  // ELSA=TPM2_C0SC[2]=0
+//	TPM0_REG->CONTROLS[4].CnSC = (1 << 5) | // MSB =TPM2_C0SC[5]=0
+//								 (0 << 4) | // MSA =TPM2_C0SC[4]=0
+//								 (1 << 3) | // ELSB=TPM2_C0SC[3]=0
+//								 (0 << 2);  // ELSA=TPM2_C0SC[2]=0
 
 	/* Ativar o PWM no modulo TPM1 canal 0 --> PTA12 */
 //	TPM1_REG->CONTROLS[0].CnSC = (1 << 5) | // MSB =TPM2_C0SC[5]=0
@@ -210,25 +211,25 @@ int main(void) {
 //	TPM1_REG->CONTROLS[0].CnV = 0x147; 		// 0x147 = 327 (10% de 3276)
 
 	while(1){
-		for(int i = 327; i < 3276; i+=327) {
-			TPM0_REG->CONTROLS[2].CnV = i;
-			delay();
-		}
+//		for(int i = 327; i < 3276; i+=327) {
+			TPM2_REG->CONTROLS[0].CnV = 81;
+//			delay();
+//		}
 
-		for(int i = 3276; i >= 327; i-= 327) {
-			TPM0_REG->CONTROLS[2].CnV = i;
-			delay();
-		}
+//		for(int i = 3276; i >= 327; i-= 327) {
+//			TPM2_REG->CONTROLS[0].CnV = i;
+//			delay();
+//		}
 
-		for(int i = 327; i < 3276; i+=327) {
-			TPM0_REG->CONTROLS[4].CnV = i;
-			delay();
-		}
-
-		for(int i = 3276; i >= 327; i-= 327) {
-			TPM0_REG->CONTROLS[4].CnV = i;
-			delay();
-		}
+//		for(int i = 327; i < 3276; i+=327) {
+//			TPM0_REG->CONTROLS[4].CnV = i;
+//			delay();
+//		}
+//
+//		for(int i = 3276; i >= 327; i-= 327) {
+//			TPM0_REG->CONTROLS[4].CnV = i;
+//			delay();
+//		}
 	}
 
     return 0 ;

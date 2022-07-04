@@ -25,15 +25,15 @@ int main() {
 		if (counter == (mod - 1)) control ^= 1;
 		if (!control) {
 			for (int i = 0; i < 4; i++) {
-//				GPIOB->PCOR |= 0xF;
-				GPIOB->PDOR = 0x0;
+				GPIOB->PCOR |= 0xF;
+//				GPIOB->PDOR = 0x0;
 				GPIOB->PDOR |= steps[3 - i];
 				delay(10000);
 			}
 		} else {
 			for (int i = 0; i < 4; i++) {
-//				GPIOB->PCOR |= 0xF;
-				GPIOB->PDOR = 0x0;
+				GPIOB->PCOR |= 0xF;
+//				GPIOB->PDOR = 0x0;
 				GPIOB->PDOR |= steps[i];
 				delay(10000);
 			}
